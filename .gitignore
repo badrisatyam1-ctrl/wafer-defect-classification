@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Training artifacts
+models/checkpoints/
+logs/
+*.keras
+*.h5
+
+# OS
+.DS_Store
+Thumbs.db
