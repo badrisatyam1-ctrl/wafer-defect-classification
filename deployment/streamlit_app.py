@@ -119,18 +119,38 @@ elif mode == 'Upload Image / Synthetic':
             st.image(use_image, caption=f'Synthetic ({gt_cls})', use_container_width=True)
 
 def wafer_present(image):
-    '''Simple heuristic to detect if a wafer is in the frame using area coverage'''
+    '''
+    Detects if a wafer is in the frame by checking:
+    1. Area coverage (must be > 10% of frame)
+    2. Circularity (must be > 0.7, where 1.0 is a perfect circle)
+    '''
     if image is None: return False
     try:
+        # Preprocessing
         gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-        _, thresh = cv2.threshold(gray, 15, 255, cv2.THRESH_BINARY)
+        blurred = cv2.GaussianBlur(gray, (7, 7), 0)
+        _, thresh = cv2.threshold(blurred, 30, 255, cv2.THRESH_BINARY)
+        
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours: return False
-        max_area = max(cv2.contourArea(c) for c in contours)
+        
+        # Get largest contour
+        cnt = max(contours, key=cv2.contourArea)
+        area = cv2.contourArea(cnt)
         total_area = image.shape[0] * image.shape[1]
-        return (max_area / total_area) > 0.1
+        
+        # Check 1: Area Coverage
+        if (area / total_area) < 0.1:
+            return False
+            
+        # Check 2: Circularity
+        perimeter = cv2.arcLength(cnt, True)
+        if perimeter == 0: return False
+        circularity = 4 * np.pi * (area / (perimeter * perimeter))
+        
+        return circularity > 0.7
     except:
-        return True # Fallback to True on error to avoid blocking
+        return True # Fallback
 
 # -- PREDICTION & RESULTS --
 if use_image is not None:
