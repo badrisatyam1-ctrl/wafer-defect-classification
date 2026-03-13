@@ -1,121 +1,178 @@
 """
-Wafer Defect Segmentation Dashboard (U-Net)
-Visualizes defect localization using Research-Standard U-Net masks.
+Wafer Defect Classification Dashboard (ResNet18)
+==================================================
+Displays: predicted class, confidence, Grad-CAM heatmap overlay.
+Uses the inference_api module to ensure preprocessing matches training.
 """
 import streamlit as st
-import tensorflow as tf
-from tensorflow import keras
 import numpy as np
 import cv2
 from PIL import Image
 import sys
 from pathlib import Path
 
-# Add project root
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Project root
+PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+sys.path.insert(0, str(PROJECT_ROOT))
 
-from models.unet_model import dice_loss, dice_coefficient
-from utils.synthetic_generator import generate_wafer_mask_pair
+from utils.wafer_map_generator import generate_wafer_map, DEFECT_CLASSES
 import random
 
-st.set_page_config(page_title="Wafer Segmentation Research", page_icon="🧬", layout="wide")
+st.set_page_config(
+    page_title="Wafer Defect Classifier",
+    page_icon="🔬",
+    layout="wide"
+)
 
-# CSS
+# ── CSS ─────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    .metric-box { padding: 15px; border-radius: 10px; background: #e3f2fd; color: #1565c0; text-align: center; }
-    .metric-val { font-size: 24px; font-weight: bold; }
-    .def-found { color: #d32f2f; font-weight: bold; }
-    .def-clear { color: #388e3c; font-weight: bold; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+
+    .main-title {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 2.2rem; font-weight: 700;
+    }
+    .result-box {
+        padding: 20px; border-radius: 14px; text-align: center;
+        font-size: 20px; font-weight: 700; margin: 8px 0;
+    }
+    .defect-found {
+        background: linear-gradient(135deg, #ff5252, #d32f2f); color: white;
+    }
+    .wafer-clear {
+        background: linear-gradient(135deg, #69f0ae, #2e7d32); color: white;
+    }
+    .confidence-high { color: #2e7d32; font-weight: 700; }
+    .confidence-mid  { color: #f57c00; font-weight: 700; }
+    .confidence-low  { color: #d32f2f; font-weight: 700; }
 </style>
 """, unsafe_allow_html=True)
 
-# LOAD MODEL
+# ── Model Loading ───────────────────────────────────────────────────
 @st.cache_resource
-def load_unet():
-    model_path = Path("models/checkpoints/unet_best.keras")
-    if model_path.exists():
-        try:
-            # Must Load Custom Objects for Dice Loss
-            custom_objects = {'dice_loss': dice_loss, 'dice_coefficient': dice_coefficient}
-            model = keras.models.load_model(str(model_path), custom_objects=custom_objects)
-            return model, True
-        except Exception as e:
-            st.error(f"Load Error: {e}")
-    return None, False
+def load_classifier():
+    """Load the trained ResNet18 model via inference_api."""
+    model_path = PROJECT_ROOT / "models" / "checkpoints" / "resnet18_best.pth"
+    if not model_path.exists():
+        return None, False
 
-model, model_loaded = load_unet()
+    try:
+        from deployment.inference_api import load_model
+        model = load_model(str(model_path))
+        return model, True
+    except Exception as e:
+        st.error(f"Model load error: {e}")
+        return None, False
 
-# SIDEBAR
-st.sidebar.title("🔬 Research Lab")
-st.sidebar.info(f"Model: {'🟢 U-Net Loaded' if model_loaded else '🔴 Training Required'}")
-threshold = st.sidebar.slider("Mask Threshold", 0.1, 0.9, 0.5)
+model, model_loaded = load_classifier()
 
-st.title("🧬 Wafer Defect Segmentation (U-Net)")
-st.markdown("Locates defect pixels using **semantic segmentation** instead of simple classification.")
+# ── Sidebar ─────────────────────────────────────────────────────────
+st.sidebar.title("🔬 Wafer Analytics")
+if model_loaded:
+    st.sidebar.success("✅ ResNet18 Loaded")
+else:
+    st.sidebar.error("❌ Model Not Found")
+    st.sidebar.caption("Run: `python training/train_classifier.py`")
 
-col1, col2, col3 = st.columns(3)
+st.sidebar.markdown("---")
+st.sidebar.markdown("**Defect Classes:**")
+for i, cls in enumerate(DEFECT_CLASSES):
+    st.sidebar.markdown(f"`{i}` — {cls}")
 
-# INPUT
-with col1:
-    st.subheader("1. Input Wafer")
-    uploaded_file = st.file_uploader("Upload Image", type=["jpg", "png"])
-    
-    if st.button("Generate Synthetic Sample"):
-        cls = random.choice(['Scratch', 'Donut', 'Edge-Ring', 'Loc', 'Random'])
-        img, true_mask = generate_wafer_mask_pair(cls)
-        st.session_state['seg_img'] = img
-        st.session_state['seg_true_mask'] = true_mask
-        st.toast(f"Generated: {cls}")
+st.sidebar.markdown("---")
+st.sidebar.markdown("**Tech Stack:**")
+st.sidebar.markdown("- ResNet18 (ImageNet pretrained)")
+st.sidebar.markdown("- Focal Loss (γ=2.0)")
+st.sidebar.markdown("- Grad-CAM Explainability")
+
+# ── Main Content ────────────────────────────────────────────────────
+st.markdown('<p class="main-title">🧬 Wafer Defect Classification</p>', unsafe_allow_html=True)
+st.markdown("Industry-grade macro-level defect detection with **Grad-CAM explainability**.")
+
+col_input, col_result, col_heatmap = st.columns([1, 1, 1])
+
+# ── Input ───────────────────────────────────────────────────────────
+with col_input:
+    st.subheader("📥 Input")
+    uploaded_file = st.file_uploader("Upload wafer image", type=["jpg", "png", "jpeg", "bmp"])
+
+    synth_class = st.selectbox("Or generate synthetic:", ["(random)"] + DEFECT_CLASSES)
+    if st.button("🎲 Generate Sample"):
+        if synth_class == "(random)":
+            cls = random.choice(DEFECT_CLASSES)
+        else:
+            cls = synth_class
+        img = generate_wafer_map(cls, augment=True)
+        st.session_state['cls_img'] = img
+        st.session_state['cls_gt'] = cls
 
     use_image = None
-    if 'seg_img' in st.session_state and not uploaded_file:
-        use_image = st.session_state['seg_img']
-        st.image(use_image, caption="Synthetic Input", use_column_width=True)
-    elif uploaded_file:
+    if uploaded_file:
         use_image = np.array(Image.open(uploaded_file).convert('RGB'))
-        st.image(use_image, caption="Uploaded Input", use_column_width=True)
+        st.image(use_image, caption="Uploaded", use_container_width=True)
+    elif 'cls_img' in st.session_state:
+        use_image = st.session_state['cls_img']
+        gt = st.session_state.get('cls_gt', '?')
+        st.image(use_image, caption=f"Synthetic ({gt})", use_container_width=True)
 
-# PREDICTION
+# ── Prediction ──────────────────────────────────────────────────────
 if use_image is not None and model_loaded:
-    # Preprocess
-    img_resized = cv2.resize(use_image, (128, 128))
-    # Normalize [0,1] - U-Net expects this if trained on it
-    img_norm = img_resized.astype(np.float32) / 255.0
-    input_tensor = np.expand_dims(img_norm, axis=0)
-    
-    # Predict Mask
-    pred_mask = model.predict(input_tensor, verbose=0)[0] # (128, 128, 1)
-    
-    # Threshold
-    binary_mask = (pred_mask > threshold).astype(np.uint8) * 255
-    
-    # Color Overlay
-    overlay = img_resized.copy()
-    # Red overlay on defect pixels
-    overlay[binary_mask[:,:,0] == 255] = [255, 0, 0] 
-    
-    with col2:
-        st.subheader("2. Predicted Mask")
-        st.image(binary_mask, caption=f"Segmentation Mask (>{threshold})", use_column_width=True, clamp=True)
-        
-    with col3:
-        st.subheader("3. Defect Overlay")
-        st.image(overlay, caption="Localization", use_column_width=True)
-        
-    # METRICS
-    st.markdown("---")
-    defect_pixels = np.sum(binary_mask > 0)
-    total_pixels = 128*128
-    defect_area = (defect_pixels / total_pixels) * 100
-    
-    m1, m2 = st.columns(2)
-    m1.metric("Defect Area", f"{defect_area:.2f}%")
-    
-    if defect_area > 0.5:
-        m2.markdown(f'<div class="metric-box def-found">DEFECT DETECTED</div>', unsafe_allow_html=True)
-    else:
-        m2.markdown(f'<div class="metric-box def-clear">WAFER CLEAR</div>', unsafe_allow_html=True)
+    from deployment.inference_api import predict
+
+    with st.spinner("Analyzing wafer..."):
+        result = predict(use_image, model=model, generate_heatmap=True)
+
+    pred_class  = result['class']
+    confidence  = result['confidence']
+    all_probs   = result['all_probs']
+    overlay     = result['overlay']
+
+    # ── Result Column ───────────────────────────────────────────────
+    with col_result:
+        st.subheader("📊 Prediction")
+
+        # Class badge
+        if pred_class == "normal":
+            st.markdown('<div class="result-box wafer-clear">✅ NORMAL</div>',
+                        unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="result-box defect-found">⚠️ {pred_class.upper()}</div>',
+                        unsafe_allow_html=True)
+
+        # Confidence
+        if confidence > 0.8:
+            css = "confidence-high"
+        elif confidence > 0.5:
+            css = "confidence-mid"
+        else:
+            css = "confidence-low"
+        st.markdown(f'<p class="{css}">Confidence: {confidence*100:.1f}%</p>',
+                    unsafe_allow_html=True)
+
+        # All class probabilities as a bar chart
+        st.markdown("**Class Probabilities:**")
+        prob_data = {k: v for k, v in sorted(all_probs.items(), key=lambda x: -x[1])}
+        st.bar_chart(prob_data)
+
+    # ── Heatmap Column ──────────────────────────────────────────────
+    with col_heatmap:
+        st.subheader("🔥 Grad-CAM")
+        if overlay is not None:
+            st.image(overlay, caption="Attention Heatmap", use_container_width=True)
+            st.caption("Red = high attention. Shows which wafer regions drove the prediction.")
+        else:
+            st.info("Heatmap not available.")
 
 elif not model_loaded:
-    st.warning("⚠️ Model not found. Runs `python training/train_segmentation.py` first.")
+    st.warning("⚠️ No trained model found.")
+    st.info("""
+    **To train the model, run:**
+    ```
+    python training/train_classifier.py
+    ```
+    Training takes ~5-10 minutes on CPU.
+    """)

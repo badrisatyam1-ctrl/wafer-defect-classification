@@ -1,14 +1,42 @@
-# Python
+# ── Python ──────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
 
-# Training artifacts
-models/checkpoints/
+# ── Virtual environments ─────────────────────────────────────────────
+venv/
+.venv/
+env/
+.env
+
+# ── Jupyter ──────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ── Model weights (large binaries — not committed) ───────────────────
+models/checkpoints/*.pth
+models/checkpoints/*.keras
+models/checkpoints/*.h5
+models/checkpoints/*.onnx
+
+# ── Logs & TensorBoard ───────────────────────────────────────────────
 logs/
-*.keras
-*.h5
+runs/
+*.log
 
-# OS
+# ── Data (raw datasets may be large) ────────────────────────────────
+data/raw/
+data/processed/
+data/external/
+
+# ── IDE / OS ─────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/
+*.swp

@@ -1,10 +1,57 @@
+
+
 """
 Training Script for U-Net Segmentation
 Optimized for Dice Score (Research Standard).
 """
 import tensorflow as tf
 import numpy as np
-import sys
+import sysYou are a senior semiconductor yield analytics ML engineer.
+
+Goal:
+Upgrade an existing wafer defect detection model so it detects
+MACRO-LEVEL wafer defects at industry standard accuracy.
+
+Constraints:
+- Input is a full-wafer image or wafer map (not cropped dies)
+- Defects are global spatial patterns, not pixel noise
+- Model must be robust to class imbalance and process drift
+- Training and inference preprocessing MUST be identical
+
+Defect classes:
+[
+ "normal",
+ "center",
+ "edge_ring",
+ "edge_loss",
+ "scratch",
+ "ring",
+ "cluster",
+ "full_fail"
+]
+
+Tasks:
+1. Replace any patch-based or random-crop logic with full-wafer input
+2. Implement a ResNet18-based classifier with global context
+3. Use class-weighted CrossEntropy or Focal Loss
+4. Split train/val by lot or time (NOT random)
+5. Add Grad-CAM explainability
+6. Ensure inference pipeline exactly matches training preprocessing
+7. Output:
+   - predicted class
+   - confidence score
+   - heatmap overlay
+
+Do NOT:
+- Use elastic distortion
+- Use heavy blur
+- Use pixel-level segmentation
+
+Deliverables:
+- PyTorch training script
+- Inference script for website API
+- Clear comments explaining each design decision
+
 from pathlib import Path
 import datetime
 
@@ -76,3 +123,4 @@ if __name__ == "__main__":
     
     print("\n✅ TRAINING COMPLETE")
     print(f"Best Dice Score: {max(history.history['val_dice_coefficient']):.4f}")
+            

@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Run Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install CPU-only dependencies
+        run: |
+          pip install --upgrade pip
+          # Install lightweight CPU builds to keep CI fast
+          pip install torch==2.0.1+cpu torchvision==0.15.2+cpu \
+            --index-url https://download.pytorch.org/whl/cpu
+          pip install numpy scikit-learn opencv-python-headless \
+            Pillow matplotlib seaborn tqdm
+
+      - name: Run import smoke tests
+        run: |
+          python -c "from models.resnet18_model import WaferResNet18, FocalLoss, GradCAM; print('ResNet18 model OK')"
+          python -c "from utils.wafer_map_generator import generate_wafer_map, DEFECT_CLASSES; print('Wafer map generator OK')"
+          python -c "from deployment.inference_api import preprocess_image; print('Inference API OK')"
+
+      - name: Run wafer map generation test
+        run: |
+          python -c "
+          from utils.wafer_map_generator import generate_wafer_map, DEFECT_CLASSES
+          for cls in DEFECT_CLASSES:
+              img = generate_wafer_map(cls, augment=False)
+              assert img.shape == (224, 224, 3), f'Bad shape for {cls}: {img.shape}'
+              assert img.dtype.name == 'uint8', f'Bad dtype for {cls}'
+          print(f'All {len(DEFECT_CLASSES)} classes generated successfully.')
+          "
+
+      - name: Run ResNet18 forward pass test
+        run: |
+          python -c "
+          import torch
+          from models.resnet18_model import WaferResNet18, FocalLoss
+          model = WaferResNet18(num_classes=8, pretrained=False)
+          model.eval()
+          x = torch.randn(2, 3, 224, 224)
+          with torch.no_grad():
+              out = model(x)
+          assert out.shape == (2, 8), f'Bad output shape: {out.shape}'
+          loss_fn = FocalLoss(gamma=2.0)
+          targets = torch.randint(0, 8, (2,))
+          loss = loss_fn(out, targets)
+          assert loss.item() > 0, 'Loss should be positive'
+          print('ResNet18 forward pass and Focal Loss: OK')
+          "
