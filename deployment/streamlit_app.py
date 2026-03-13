@@ -93,12 +93,75 @@ st.sidebar.markdown("- Grad-CAM Explainability")
 st.markdown('<p class="main-title">🧬 Wafer Defect Classification</p>', unsafe_allow_html=True)
 st.markdown("Industry-grade macro-level defect detection with **Grad-CAM explainability**.")
 
-col_input, col_result, col_heatmap = st.columns([1, 1, 1])
+mode = st.radio(
+    "Select detection mode",
+    ["Upload Image / Synthetic", "Real-time Camera"],
+    horizontal=True
+)
 
-# ── Input ───────────────────────────────────────────────────────────
-with col_input:
-    st.subheader("📥 Input")
-    uploaded_file = st.file_uploader("Upload wafer image", type=["jpg", "png", "jpeg", "bmp"])
+st.markdown("---")
+
+if mode == "Real-time Camera":
+    col_input, col_result, col_heatmap = st.columns([1, 1, 1])
+    
+    with col_input:
+        st.subheader("📷 Camera Input")
+        camera_image = st.camera_input("Take a picture of wafer")
+        
+    if camera_image and model_loaded:
+        from deployment.inference_api import predict
+        
+        # Open the image as requested
+        use_image = np.array(Image.open(camera_image).convert('RGB'))
+        
+        with st.spinner("Analyzing wafer..."):
+            result = predict(use_image, model=model, generate_heatmap=True)
+
+        pred_class  = result['class']
+        confidence  = result['confidence']
+        all_probs   = result['all_probs']
+        overlay     = result['overlay']
+
+        # ── Result Column ───────────────────────────────────────────────
+        with col_result:
+            st.subheader("📊 Prediction")
+
+            # Class badge
+            if pred_class == "normal":
+                st.markdown('<div class="result-box wafer-clear">✅ NORMAL</div>',
+                            unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="result-box defect-found">⚠️ {pred_class.upper()}</div>',
+                            unsafe_allow_html=True)
+
+            # Confidence
+            if confidence > 0.8:
+                css = "confidence-high"
+            elif confidence > 0.5:
+                css = "confidence-mid"
+            else:
+                css = "confidence-low"
+            st.markdown(f'<p class="{css}">Confidence: {confidence*100:.1f}%</p>',
+                        unsafe_allow_html=True)
+
+            # All class probabilities as a bar chart
+            st.markdown("**Class Probabilities:**")
+            prob_data = {k: v for k, v in sorted(all_probs.items(), key=lambda x: -x[1])}
+            st.bar_chart(prob_data)
+
+        # ── Heatmap Column ──────────────────────────────────────────────
+        with col_heatmap:
+            st.subheader("🔥 Grad-CAM")
+            if overlay is not None:
+                st.image(overlay, caption="Attention Heatmap", use_container_width=True)
+                st.caption("Red = high attention. Shows which wafer regions drove the prediction.")
+            else:
+                st.info("Heatmap not available.")
+                
+    st.stop()
+    with col_input:
+        st.subheader("📥 Input")
+        uploaded_file = st.file_uploader("Upload wafer image", type=["jpg", "png", "jpeg", "bmp"])
 
     synth_class = st.selectbox("Or generate synthetic:", ["(random)"] + DEFECT_CLASSES)
     if st.button("🎲 Generate Sample"):
