@@ -159,6 +159,7 @@ if mode == "Real-time Camera":
                 st.info("Heatmap not available.")
                 
     st.stop()
+elif mode == "Upload Image / Synthetic":
     with col_input:
         st.subheader("📥 Input")
         uploaded_file = st.file_uploader("Upload wafer image", type=["jpg", "png", "jpeg", "bmp"])
