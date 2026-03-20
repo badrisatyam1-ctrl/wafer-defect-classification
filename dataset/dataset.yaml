@@ -1,0 +1,10 @@
+# YOLOv8 Dataset Configuration for Wafer Detection
+# Usage: yolo detect train data=dataset/dataset.yaml model=yolov8n.pt epochs=50
+
+path: ../dataset            # dataset root dir (relative to training script)
+train: images/train         # train images
+val: images/val             # val images
+
+# Classes
+names:
+  0: wafer

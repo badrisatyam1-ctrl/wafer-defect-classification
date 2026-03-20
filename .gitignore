@@ -20,6 +20,7 @@ env/
 
 # ── Model weights (large binaries — not committed) ───────────────────
 models/checkpoints/*.pth
+models/checkpoints/*.pt
 models/checkpoints/*.keras
 models/checkpoints/*.h5
 models/checkpoints/*.onnx
@@ -33,6 +34,12 @@ runs/
 data/raw/
 data/processed/
 data/external/
+dataset/images/
+dataset/labels/
+
+# ── YOLO pretrained weights ─────────────────────────────────────────
+yolov8*.pt
+tmp/
 
 # ── IDE / OS ─────────────────────────────────────────────────────────
 .DS_Store
@@ -40,3 +47,4 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+pyrightconfig.json

@@ -1,0 +1,9 @@
+# YOLOv8 Wafer Detection Config
+# Train: yolo detect train data=dataset/wafer.yaml model=yolov8n.pt epochs=50
+
+train: images/train
+val: images/val
+
+nc: 1
+names:
+  0: wafer
