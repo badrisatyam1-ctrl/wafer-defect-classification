@@ -71,6 +71,16 @@ def get_model_and_preprocessor():
     if _model is not None and current_mtime == _last_mtime and current_mtime > 0:
         return _model, _preprocessor
 
+    if not CHECKPOINT_PATH.exists():
+        raise RuntimeError(
+            "\n" + "=" * 76 + "\n"
+            "[PROPRIETARY NOTICE] Production weights ('resnet18_best.pt') are protected\n"
+            "intellectual property and withheld from public distribution.\n"
+            "This repository serves as an architectural portfolio and methodology showcase.\n"
+            "To request evaluation access or a live fab demonstration, contact the author.\n"
+            + "=" * 76
+        )
+
     checkpoint = torch.load(str(CHECKPOINT_PATH), map_location=DEVICE, weights_only=False)
     _checkpoint_meta = {k: v for k, v in checkpoint.items() if k != "model_state_dict"}
 

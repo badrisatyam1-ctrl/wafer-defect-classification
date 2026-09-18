@@ -1,33 +1,35 @@
-# 🧬 Wafer Defect Classification
+# 🧬 Wafer Yield Analytics Studio — Semiconductor Defect Intelligence
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.9%2B-blue?logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white" />
-  <img src="https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit&logoColor=white" />
-  <img src="https://img.shields.io/badge/License-MIT-green" />
-  <img src="https://img.shields.io/github/actions/workflow/status/badrisatyam1-ctrl/wafer-defect-classification/ci.yml?label=CI&logo=github" />
+  <img src="https://img.shields.io/badge/Macro--F1-93.51%25-success?logo=target" />
+  <img src="https://img.shields.io/badge/XAI-Grad--CAM%2B%2B-orange" />
+  <img src="https://img.shields.io/badge/FastAPI-Production-009688?logo=fastapi&logoColor=white" />
 </p>
 
 <p align="center">
-  <b>Industry-grade macro-level wafer defect detection using ResNet18 + Focal Loss + Grad-CAM.</b><br/>
-  Dual-mode inference: Synthetic Sandbox (F1=0.986) + Real Production (WM-811K, F1=0.868).
+  <b>Production-grade semiconductor wafer defect classification and yield intelligence system.</b><br/>
+  Featuring ResNet-18 Backbone (93.51% Macro-F1), Multi-Scale Grad-CAM++ Explainability, and Neural Camera Gating.
 </p>
+
+> [!IMPORTANT]
+> **Proprietary Notice & Technical Showcase Repository**:
+> This repository is published as a technical architecture showcase and ML portfolio. The trained production model weights (`resnet18_best.pt`) and proprietary semiconductor fabrication datasets are private intellectual property and are intentionally withheld from public distribution. The project cannot be executed locally without licensed checkpoint access. For evaluation access or live demonstrations, please contact the author.
 
 ---
 
-## 📌 Project Overview
+## 📌 Technical Highlights & Key Metrics
 
-Semiconductor wafers are circular silicon disks on which hundreds of chips are etched. Defects — rings, scratches, clusters — reduce yield and cost millions in recalls. This project automates **macro-level defect classification** using deep learning with two distinct trained models:
-
-| Feature | Detail |
+| Feature | Production Detail |
 |---|---|
-| **Primary Model** | ResNet18 (ImageNet pretrained, fine-tuned) |
-| **Loss** | Focal Loss (γ=2.0) + Weighted Cross-Entropy for class imbalance |
-| **Explainability** | Grad-CAM heatmaps — highlights defect regions |
-| **Data split** | Lot-based (prevents leakage from fab process sharing) |
-| **UI** | Streamlit dashboard — dual-mode: Real Production + Synthetic Sandbox |
-| **Dataset** | WM-811K real fab wafer maps + custom synthetic wafer map generator |
-| **Inference Routing** | Auto-detects checkpoint architecture (8-class production vs 7-class hackathon) |
+| **Architecture** | Custom ResNet-18 Deep Convolutional Backbone |
+| **Accuracy / Macro-F1** | **93.51% Macro-F1** across 8 defect taxonomies |
+| **Inference Latency** | ~12ms per wafer map (CPU/CUDA accelerated) |
+| **Explainable AI (XAI)** | **Multi-Scale Grad-CAM++** (Layer3 + Layer4 fusion with wafer disc masking) |
+| **Input Protection** | **Convex Hull Circularity Camera Gating** (filters faces, hands, non-wafer objects) |
+| **Web Studio** | Glassmorphic Web Dashboard (FastAPI + Vanilla CSS/JS) |
+| **Taxonomies Covered** | `normal`, `center`, `edge_ring`, `edge_loss`, `scratch`, `ring`, `cluster`, `full_fail` |
 
 ---
 
