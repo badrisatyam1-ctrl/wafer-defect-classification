@@ -1,136 +1,238 @@
-"""
-Synthetic Wafer Generator (Segmentation Mode)
-Generates (Image, Mask) pairs for U-Net training.
-Updated to include Grid Textures for real-world robustness.
-"""
+import random
 import numpy as np
 import cv2
-import random
 
-def add_grid_texture(img):
-    """Adds a grid-like texture to the wafer background"""
-    h, w = img.shape
-    
-    # 1. Grid Lines (Horizontal & Vertical)
-    step = random.randint(8, 15) # Grid spacing
-    color = random.randint(80, 120) # Slightly lighter/darker than background
-    
-    # Horizontal
-    for y in range(0, h, step):
-        cv2.line(img, (0, y), (w, y), color, 1)
-        
-    # Vertical
-    for x in range(0, w, step):
-        cv2.line(img, (x, 0), (x, h), color, 1)
-        
-    # 2. Random specialized texture (Moiré / Crosshatch)
-    if random.random() > 0.5:
-        # Fixed: Generate noise properly for addition
-        noise = np.random.randint(0, 20, (h, w), dtype=np.uint8)
-        # Ensure img is compatible
-        if img.dtype != np.uint8:
-            img = img.astype(np.uint8)
-        img = cv2.addWeighted(img, 0.9, noise, 0.1, 0)
-        
-    return img
+DEFECT_CLASSES_V2 = [
+    "normal",       # 0
+    "center",       # 1
+    "edge_ring",    # 2
+    "edge_loss",    # 3
+    "scratch",      # 4
+    "ring",         # 5
+    "cluster",      # 6
+    "full_fail",    # 7
+]
 
-def generate_wafer_mask_pair(defect_type, size=(128, 128)):
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+NPZ_PATH = PROJECT_ROOT / "dataset" / "wm811k_dataset.npz"
+
+import json
+
+EXEMPLARS_PATH = PROJECT_ROOT / "utils" / "exemplars.json"
+
+_DATASET_CACHE = None
+
+def _get_dataset_cache():
+    global _DATASET_CACHE
+    if _DATASET_CACHE is None and NPZ_PATH.exists():
+        try:
+            data = np.load(str(NPZ_PATH))
+            images = data["images"]
+            labels = data["labels"]
+            class_map = {}
+            if EXEMPLARS_PATH.exists():
+                try:
+                    with open(EXEMPLARS_PATH, "r") as f:
+                        class_map = json.load(f)
+                except Exception:
+                    pass
+            if not class_map:
+                for idx, name in enumerate(DEFECT_CLASSES_V2):
+                    matches = np.where(labels == idx)[0]
+                    if len(matches) > 0:
+                        class_map[name] = matches.tolist()
+            _DATASET_CACHE = (images, class_map)
+        except Exception as e:
+            print(f"Warning: failed to load {NPZ_PATH}: {e}")
+            _DATASET_CACHE = False
+    return _DATASET_CACHE
+
+def generate_macro_wafer_map(defect_type: str, size: tuple = (224, 224)) -> np.ndarray:
+    """
+    Generate or sample a full-wafer image for macro-level classification.
+    Uses authentic WM-811K fab wafer maps when available with rotational/flip
+    diversification, providing 100% realistic wafer maps that match the neural model.
+    """
+    defect_type = defect_type.lower().strip()
+    cache = _get_dataset_cache()
+    if cache and defect_type in cache[1] and len(cache[1][defect_type]) > 0:
+        images, class_map = cache
+        chosen_idx = random.choice(class_map[defect_type])
+        img = images[chosen_idx].copy()
+
+        # Diversify with random 90-degree rotations and flips
+        k = random.randint(0, 3)
+        if k > 0:
+            img = np.rot90(img, k)
+        if random.random() > 0.5:
+            img = np.fliplr(img)
+        if random.random() > 0.5:
+            img = np.flipud(img)
+
+        if img.shape[:2] != size:
+            img = cv2.resize(img, size, interpolation=cv2.INTER_NEAREST)
+
+        return cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+
     h, w = size
-    
-    # 1. Base Image & Mask
-    # Create a grid-textured background instead of flat gray
-    img = np.full((h, w), 100, dtype=np.uint8)
-    img = add_grid_texture(img)
-    
-    mask = np.zeros((h, w), dtype=np.float32) # 0=Background, 1=Defect
-    
-    # Circular Crop for Wafer Shape
     center = (w // 2, h // 2)
-    radius = min(h, w) // 2 - 10
+    radius = min(h, w) // 2 - random.randint(5, 12)
     
-    # Mask out everything outside the wafer circle
-    wafer_mask = np.zeros((h, w), dtype=np.uint8)
-    cv2.circle(wafer_mask, center, radius, 255, -1)
-    img = cv2.bitwise_and(img, img, mask=wafer_mask)
+    # ── BASE BACKGROUND ─────────────────────────────────────────────
+    # Randomize the base intensity (dark fab background)
+    base_val = random.randint(30, 80)
+    img = np.full((h, w), base_val, dtype=np.float32)
     
-    # Defect Generation (Draw on BOTH img and mask)
-    # Draw defects BRIGHTER than the grid so they stand out
-    defect_color = 255
-    
-    if defect_type == 'Center':
-        cv2.circle(img, center, radius // 4, defect_color, -1)
-        cv2.circle(mask, center, radius // 4, 1.0, -1)
-        
-    elif defect_type == 'Donut':
-        cv2.circle(img, center, radius // 2, defect_color, 15)
-        cv2.circle(mask, center, radius // 2, 1.0, 15)
-        
-    elif defect_type == 'Edge-Loc':
-        angle = random.uniform(0, 2*np.pi)
-        r = radius - 20
-        x = int(center[0] + r * np.cos(angle))
-        y = int(center[1] + r * np.sin(angle))
-        cv2.circle(img, (x, y), 30, defect_color, -1)
-        cv2.circle(mask, (x, y), 30, 1.0, -1)
-        
-    elif defect_type == 'Edge-Ring':
-        cv2.circle(img, center, radius - 10, defect_color, 10)
-        cv2.circle(mask, center, radius - 10, 1.0, 10)
-        
-    elif defect_type == 'Loc':
-        x = random.randint(center[0]-radius//2, center[0]+radius//2)
-        y = random.randint(center[1]-radius//2, center[1]+radius//2)
-        cv2.circle(img, (x, y), 25, defect_color, -1)
-        cv2.circle(mask, (x, y), 25, 1.0, -1)
-        
-    elif defect_type == 'Random':
-        for _ in range(50):
-            rx, ry = random.randint(0, w-1), random.randint(0, h-1)
-            if (rx-center[0])**2 + (ry-center[1])**2 < radius**2:
-                cv2.circle(img, (rx, ry), 3, defect_color, -1)
-                cv2.circle(mask, (rx, ry), 3, 1.0, -1)
-                
-    elif defect_type == 'Scratch':
-        p1 = (random.randint(20, w-20), random.randint(20, h-20))
-        p2 = (random.randint(20, w-20), random.randint(20, h-20))
-        cv2.line(img, p1, p2, defect_color, 3)
-        cv2.line(mask, p1, p2, 1.0, 3)
-        
-    elif defect_type == 'Near-full':
-        cv2.circle(img, center, radius - 10, defect_color, -1)
-        cv2.circle(mask, center, radius - 10, 1.0, -1)
-
-    # --- Augmentations (Apply ONLY to Image) ---
-    scale = random.uniform(0.8, 1.1)
-    img_aug = np.clip(img.astype(float) * scale, 0, 255).astype(np.uint8)
-    
-    if random.random() > 0.5:
-        img_aug = cv2.GaussianBlur(img_aug, (3, 3), 0)
-        
-    noise = np.random.normal(0, 5, (h, w)).astype(np.float32) # Increased noise
-    img_aug = np.clip(img_aug.astype(np.float32) + noise, 0, 255).astype(np.uint8)
-    
-    # Convert Image to RGB (MobileNet/U-Net expects 3 channels)
-    img_rgb = cv2.cvtColor(img_aug, cv2.COLOR_GRAY2RGB)
-    
-    # Mask is single channel (H, W, 1)
-    mask = np.expand_dims(mask, axis=-1)
-    
-    return img_rgb, mask
-
-def create_segmentation_dataset(n_samples=2000):
-    classes = ['none', 'Center', 'Donut', 'Edge-Loc', 'Edge-Ring', 'Loc', 'Random', 'Scratch', 'Near-full']
-    x_data, y_data = [], []
-    
-    for _ in range(n_samples):
-        # 80% chance of defect, 20% none (better balance for segmentation training)
-        if random.random() > 0.2:
-            cls = random.choice(classes[1:]) # Skip 'none'
+    # Add a random directional gradient (subtle uneven illumination)
+    if random.random() > 0.4:
+        grad_dir = random.choice(["horizontal", "vertical", "radial"])
+        grad_strength = random.uniform(5, 20)
+        if grad_dir == "horizontal":
+            gradient = np.linspace(-grad_strength, grad_strength, w).reshape(1, w)
+            img += gradient
+        elif grad_dir == "vertical":
+            gradient = np.linspace(-grad_strength, grad_strength, h).reshape(h, 1)
+            img += gradient
         else:
-            cls = 'none'
+            Y, X = np.ogrid[:h, :w]
+            dist = np.sqrt((X - center[0])**2 + (Y - center[1])**2)
+            img += (dist / (dist.max() + 1e-6)) * grad_strength
             
-        img, mask = generate_wafer_mask_pair(cls)
-        x_data.append(img)
-        y_data.append(mask)
-        
-    return np.array(x_data, dtype=np.float32), np.array(y_data, dtype=np.float32)
+    # Wafer disc itself
+    wafer_brightness = random.randint(70, 120)
+    mask = np.zeros((h, w), dtype=np.uint8)
+    cv2.circle(mask, center, radius, 255, -1)
+    
+    # Fill wafer area
+    img_wafer = np.full((h, w), wafer_brightness, dtype=np.float32)
+    img = np.where(mask > 0, img_wafer + (img - base_val), img)
+    
+    # Subtle per-die "texture" (sparse dots)
+    n_dots = random.randint(20, 100)
+    for _ in range(n_dots):
+        angle = random.uniform(0, 2 * np.pi)
+        r = random.uniform(0, radius - 5)
+        px = int(center[0] + r * np.cos(angle))
+        py = int(center[1] + r * np.sin(angle))
+        dot_v = wafer_brightness + random.randint(10, 40)
+        cv2.circle(img, (px, py), random.randint(1, 2), dot_v, -1)
+
+    # ── DEFECT PATTERNS ─────────────────────────────────────────────
+    defect_bright = random.randint(180, 255)
+    defect_dim = random.randint(140, 200)
+    safe_min = min(defect_dim, defect_bright)
+    safe_max = max(defect_dim, defect_bright)
+
+    if defect_type == "normal":
+        pass
+    elif defect_type == "center":
+        c_rad = random.randint(radius // 8, radius // 2)
+        variant = random.choice(["dense", "gradient", "solid"])
+        if variant == "dense":
+            for _ in range(random.randint(50, 200)):
+                r = random.uniform(0, c_rad)
+                a = random.uniform(0, 2*np.pi)
+                cv2.circle(img, (int(center[0]+r*np.cos(a)), int(center[1]+r*np.sin(a))), random.randint(1, 4), random.randint(safe_min, safe_max), -1)
+        elif variant == "gradient":
+            Y, X = np.ogrid[:h, :w]
+            dist = np.sqrt((X - center[0])**2 + (Y - center[1])**2)
+            g_mask = np.clip(1.0 - dist / c_rad, 0, 1) * (defect_bright - wafer_brightness)
+            img += g_mask
+        else:
+            cv2.circle(img, center, c_rad, defect_bright, -1)
+
+    elif defect_type == "edge_ring":
+        thickness = random.randint(5, 20)
+        inner = radius - random.randint(10, 30)
+        cv2.circle(img, center, inner, defect_bright, thickness)
+
+    elif defect_type == "edge_loss":
+        # Solid arc/sector at edge
+        start_a = random.randint(0, 360)
+        span = random.randint(30, 120)
+        cv2.ellipse(img, center, (radius, radius), 0, start_a, start_a+span, defect_bright, -1)
+
+    elif defect_type == "scratch":
+        # Jagged or curved line
+        pts = []
+        n_pts = random.randint(3, 8)
+        curr_x, curr_y = random.randint(center[0]-radius, center[0]+radius), random.randint(center[1]-radius, center[1]+radius)
+        for _ in range(n_pts):
+            pts.append([curr_x, curr_y])
+            curr_x += random.randint(-40, 40)
+            curr_y += random.randint(-40, 40)
+        pts = np.array(pts, dtype=np.int32)
+        cv2.polylines(img, [pts], False, defect_bright, random.randint(2, 5))
+
+    elif defect_type == "ring":
+        # Concentric rings
+        r1 = random.randint(radius // 4, radius // 2)
+        cv2.circle(img, center, r1, defect_bright, random.randint(3, 10))
+        if random.random() > 0.5:
+            cv2.circle(img, center, r1 + random.randint(20, 50), defect_dim, random.randint(2, 8))
+
+    elif defect_type == "cluster":
+        # 1-3 clusters of dots
+        for _ in range(random.randint(1, 3)):
+            cx, cy = int(center[0] + random.uniform(-0.6, 0.6)*radius), int(center[1] + random.uniform(-0.6, 0.6)*radius)
+            for _ in range(random.randint(30, 100)):
+                dx, dy = int(random.gauss(0, 15)), int(random.gauss(0, 15))
+                cv2.circle(img, (cx+dx, cy+dy), random.randint(1, 3), random.randint(safe_min, safe_max), -1)
+
+    elif defect_type == "full_fail":
+        # Heavy coverage
+        n_dots = random.randint(400, 1000)
+        for _ in range(n_dots):
+            r = random.uniform(0, radius)
+            a = random.uniform(0, 2*np.pi)
+            cv2.circle(img, (int(center[0]+r*np.cos(a)), int(center[1]+r*np.sin(a))), random.randint(1, 5), random.randint(safe_min, safe_max), -1)
+
+    # ── POST-PROCESSING ─────────────────────────────────────────────
+    # Gaussian noise (subtle)
+    noise = np.random.normal(0, random.uniform(2, 6), (h, w)).astype(np.float32)
+    img = np.clip(img + noise, 0, 255).astype(np.uint8)
+    
+    # Final Wafer Mask (clean edges)
+    final_mask = np.zeros((h, w), dtype=np.uint8)
+    cv2.circle(final_mask, center, radius, 255, -1)
+    img = cv2.bitwise_and(img, img, mask=final_mask)
+    
+    # Random Rotation
+    if random.random() > 0.2:
+        angle = random.uniform(0, 360)
+        M = cv2.getRotationMatrix2D(center, angle, 1.0)
+        img = cv2.warpAffine(img, M, (w, h), borderValue=0)
+
+    return cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+
+def create_classification_dataset_v2(n_samples=3000, size=(224, 224), imbalance=True):
+    images, labels, lot_ids = [], [], []
+    
+    # Balanced distribution
+    samples_per_class = max(1, n_samples // len(DEFECT_CLASSES_V2))
+    
+    lot_counter = 0
+    samples_in_current_lot = 0
+    current_lot_id = f"LOT_{lot_counter:04d}"
+    
+    for class_idx, defect_type in enumerate(DEFECT_CLASSES_V2):
+        for _ in range(samples_per_class):
+            img = generate_macro_wafer_map(defect_type, size)
+            
+            # Use only one channel since it's a grayscale-like mask
+            if img.ndim == 3 and img.shape[2] == 3:
+                img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            
+            images.append(img)
+            labels.append(class_idx)
+            lot_ids.append(current_lot_id)
+            
+            samples_in_current_lot += 1
+            if samples_in_current_lot >= 25:  # Standard wafer lot size
+                lot_counter += 1
+                current_lot_id = f"LOT_{lot_counter:04d}"
+                samples_in_current_lot = 0
+                
+    return np.array(images), np.array(labels), np.array(lot_ids)

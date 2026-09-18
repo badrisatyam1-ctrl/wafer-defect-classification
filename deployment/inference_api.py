@@ -66,7 +66,7 @@ _model_cache = {}
 def load_model(checkpoint_path: str = None) -> WaferResNet18:
     """Load the trained ResNet18 model (cached)."""
     if checkpoint_path is None:
-        checkpoint_path = str(PROJECT_ROOT / "models" / "checkpoints" / "resnet18_best.pth")
+        checkpoint_path = str(PROJECT_ROOT / "models" / "checkpoints" / "resnet18_best.pt")
 
     if checkpoint_path in _model_cache:
         return _model_cache[checkpoint_path]

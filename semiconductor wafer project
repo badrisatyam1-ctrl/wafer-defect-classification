@@ -1,0 +1,75 @@
+eu3ome# Walkthrough: ResNet18 Wafer Defect Classifier Upgrade
+
+## Summary
+
+Upgraded the wafer defect classification system from TensorFlow/Keras U-Net segmentation to a **PyTorch ResNet18 macro-level classifier**. The new system detects 8 defect classes using full-wafer images, with Focal Loss for class imbalance, lot-based train/val splitting, and Grad-CAM explainability.
+
+## Files Created / Modified
+
+| File | Status | Description |
+|------|--------|-------------|
+| [resnet18_classifier.py](file:///c:/Users/badri/OneDrive/Documents/GitHub/wafer-defect-classification/models/resnet18_classifier.py) | **NEW** | ResNet18 classifier, FocalLoss, GradCAM, WaferPreprocessor |
+| [wafer_dataset.py](file:///c:/Users/badri/OneDrive/Documents/GitHub/wafer-defect-classification/utils/wafer_dataset.py) | **NEW** | PyTorch Dataset with lot-based splitting |
+| [synthetic_generator.py](file:///c:/Users/badri/OneDrive/Documents/GitHub/wafer-defect-classification/utils/synthetic_generator.py) | **MODIFIED** | Added V2 macro-level wafer map generator for 8 classes |
+| [train_resnet.py](file:///c:/Users/badri/OneDrive/Documents/GitHub/wafer-defect-classification/training/train_resnet.py) | **NEW** | PyTorch training script with Focal Loss + CosineAnnealing |
+| [inference.py](file:///c:/Users/badri/OneDrive/Documents/GitHub/wafer-defect-classification/deployment/inference.py) | **NEW** | Production inference engine with Grad-CAM |
+| [streamlit_app_v2.py](file:///c:/Users/badri/OneDrive/Documents/GitHub/wafer-defect-classification/deployment/streamlit_app_v2.py) | **NEW** | New Streamlit dashboard for ResNet18 |
+
+## Architecture
+
+```mermaid
+graph LR
+    A["Wafer Image"] --> B["WaferPreprocessor<br/>224×224 + ImageNet norm"]
+    B --> C["ResNet18<br/>ImageNet pretrained"]
+    C --> D["FC Head<br/>8 classes"]
+    D --> E["Predicted Class<br/>+ Confidence"]
+    C --> F["GradCAM<br/>layer4"]
+    F --> G["Heatmap Overlay"]
+```
+
+## Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **ResNet18** (not 50/101) | 18 layers is sufficient for wafer map complexity; deeper nets overfit on typical 5–50k datasets |
+| **Focal Loss** (γ=2.0) | Down-weights easy/majority samples; normal wafers (45%+ of data) don't dominate the loss |
+| **Lot-based split** | Wafers in the same lot share process conditions — random split causes data leakage |
+| **Single WaferPreprocessor** | Shared between training and inference to guarantee preprocessing parity |
+| **No elastic distortion** | Could create/destroy defect patterns, violating class semantics |
+
+## Verification Results
+
+All 6 automated tests passed:
+
+| Test | Result |
+|------|--------|
+| Model output shape [(B, 8)](file:///c:/Users/badri/OneDrive/Documents/GitHub/wafer-defect-classification/training/train_resnet.py#180-351) | ✅ PASS |
+| Focal Loss computes correctly | ✅ PASS (loss=1.9795) |
+| Preprocessing is deterministic | ✅ PASS |
+| Grad-CAM heatmap shape [(224, 224)](file:///c:/Users/badri/OneDrive/Documents/GitHub/wafer-defect-classification/training/train_resnet.py#180-351) | ✅ PASS |
+| 2-epoch training pipeline | ✅ PASS (checkpoint saved) |
+| Inference engine predictions | ✅ PASS (all 8 classes predicted) |
+
+## How to Use
+
+**Train the model:**
+
+```powershell
+python training/train_resnet.py                      # full training (15 epochs, 3000 samples)
+python training/train_resnet.py --epochs 5 --n-samples 500  # quick test
+```
+
+**Run inference:**
+
+```python
+from deployment.inference import WaferInferenceEngine
+engine = WaferInferenceEngine()
+result = engine.predict_from_array(wafer_image)
+# result = {predicted_class, confidence, class_probabilities, heatmap, overlay}
+```
+
+**Launch Streamlit dashboard:**
+
+```powershell
+streamlit run deployment/streamlit_app_v2.py
+```

@@ -1,90 +1,120 @@
+"""
+Semiconductor Wafer Presence Detector & Camera Gating Engine.
+
+Verifies that an image or camera frame contains a circular semiconductor wafer
+before running defect classification.
+
+Rejects:
+  - Faces, people, rooms, desks, hands, background clutter
+  - Blank frames, random noise
+  - Rectangular objects, non-circular shapes
+  - Human skin tones (faces, hands, fingers)
+
+Accepts:
+  - Real WM-811K fab wafer maps
+  - Camera-captured circular wafers / reticles
+  - Synthetic wafer maps
+"""
 import cv2
 import numpy as np
-import os
-
-# -------------------------------
-# YOLO LOAD (auto-update from training)
-# -------------------------------
-# Priority: live training weights > project checkpoint
-_TRAINING_WEIGHTS = os.path.expanduser("~/runs/detect/runs/yolo_wafer10k/weights/best.pt")
-_PROJECT_WEIGHTS = "models/checkpoints/yolo_wafer_best.pt"
-
-try:
-    from ultralytics import YOLO
-    if os.path.exists(_TRAINING_WEIGHTS):
-        yolo_model = YOLO(_TRAINING_WEIGHTS)
-    elif os.path.exists(_PROJECT_WEIGHTS):
-        yolo_model = YOLO(_PROJECT_WEIGHTS)
-    else:
-        yolo_model = YOLO("yolov8s.pt")
-    YOLO_AVAILABLE = True
-except:
-    YOLO_AVAILABLE = False
 
 
-# -------------------------------
-# FALLBACK DETECTOR (WORKING)
-# -------------------------------
-def fallback_wafer_check(image):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+def is_wafer_image(image: np.ndarray) -> bool:
+    """
+    High-precision circular semiconductor wafer detector.
+    Uses multi-stage contour geometry, morphological opening (to prevent
+    thin defect scratches from distorting circular bounds), minimum enclosing
+    circle fill, convex hull solidity, aspect ratio, and skin-tone gating.
 
-    # smooth
-    gray = cv2.GaussianBlur(gray, (9, 9), 2)
+    Rejects:
+      - Faces, people, rooms, desks, hands, random objects
+      - Blank frames, uniform noise
+      - Rectangular objects, non-circular shapes
 
-    # detect circle
-    circles = cv2.HoughCircles(
-        gray,
-        cv2.HOUGH_GRADIENT,
-        dp=1.2,
-        minDist=150,
-        param1=100,
-        param2=30,
-        minRadius=100,
-        maxRadius=400
-    )
+    Accepts:
+      - Real WM-811K fab wafer maps
+      - Scratches and linear defect patterns cutting across wafer boundary
+      - Camera-captured circular wafers / reticles
+      - Synthetic wafer maps
+    """
+    if image is None or image.size == 0:
+        return False
 
-    if circles is None:
-        return False, None
-
-    # take first circle
-    x, y, r = circles[0][0]
-    x, y, r = int(x), int(y), int(r)
-
-    # Ensure box bounds are valid preventing array slice errors
     h, w = image.shape[:2]
-    x1, y1, x2, y2 = max(0, x - r), max(0, y - r), min(w, x + r), min(h, y + r)
+    if h < 32 or w < 32:
+        return False
 
-    return True, (x1, y1, x2, y2)
+    # 1. Skin-tone rejection (rejects faces, hands, skin holding objects)
+    if image.ndim == 3:
+        gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+        ycrcb = cv2.cvtColor(image, cv2.COLOR_RGB2YCrCb)
+        cr = ycrcb[:, :, 1]
+        cb = ycrcb[:, :, 2]
+        skin_mask = (cr >= 133) & (cr <= 173) & (cb >= 77) & (cb <= 127)
+        if float(np.mean(skin_mask)) > 0.28:
+            return False
+    else:
+        gray = image.copy()
 
+    # 2. Reject uniform / blank / low-contrast frames
+    std_val = float(np.std(gray))
+    if std_val < 6.0:
+        return False
 
-# -------------------------------
-# YOLO DETECTOR
-# -------------------------------
-def detect_wafer_yolo(image):
-    results = yolo_model(image, conf=0.1, verbose=False)
+    total_area = h * w
+    blurred = cv2.GaussianBlur(gray, (7, 7), 1.5)
 
-    for r in results:
-        if r.boxes is not None and len(r.boxes) > 0:
-            box = r.boxes.xyxy[0].cpu().numpy()
-            x1, y1, x2, y2 = map(int, box)
-            return True, (x1, y1, x2, y2)
+    # 3. Multi-threshold search (both dark background and bright background)
+    for invert in [False, True]:
+        thresholds = [15, 30, 45, 60, 80, 110] if not invert else [140, 180, 210]
+        mode = cv2.THRESH_BINARY_INV if invert else cv2.THRESH_BINARY
+        for thresh_val in thresholds:
+            _, thresh = cv2.threshold(blurred, thresh_val, 255, mode)
 
-    return False, None
+            # Evaluate base threshold and morphologically opened versions.
+            # Morphological opening detaches thin scratch lines that reach or slightly
+            # extend past the circular wafer edge, allowing the true circular disc to be evaluated.
+            for ksize in [1, 9, 13]:
+                if ksize > 1:
+                    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (ksize, ksize))
+                    m = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+                else:
+                    m = thresh
 
+                cnts, _ = cv2.findContours(m, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                if not cnts:
+                    continue
 
-# -------------------------------
-# FINAL DETECTION FUNCTION
-# -------------------------------
-def detect_wafer(image):
-    # Try YOLO first
-    if YOLO_AVAILABLE:
-        detected, box = detect_wafer_yolo(image)
-        if detected:
-            return True, box
+                c = max(cnts, key=cv2.contourArea)
+                area = cv2.contourArea(c)
+                if area < 0.10 * total_area or area > 0.98 * total_area:
+                    continue
 
-    # fallback
-    detected, box = fallback_wafer_check(image)
-    if detected:
-        return True, box
+                hull = cv2.convexHull(c)
+                hull_area = cv2.contourArea(hull)
+                if hull_area <= 0:
+                    continue
 
-    return False, None
+                solidity = area / hull_area
+                peri = cv2.arcLength(c, True)
+                if peri <= 0:
+                    continue
+
+                circ = 4 * np.pi * (area / (peri * peri))
+                (cx, cy), radius = cv2.minEnclosingCircle(c)
+                if radius <= 0:
+                    continue
+
+                fill = area / (np.pi * radius * radius)
+                x, y, bw, bh = cv2.boundingRect(c)
+                aspect = min(bw, bh) / max(bw, bh) if max(bw, bh) > 0 else 0
+
+                # Genuine semiconductor wafer geometry:
+                # - Circular aspect ratio >= 0.80
+                # - Circularity >= 0.50
+                # - Convex hull solidity >= 0.88
+                # - Minimum enclosing circle fill >= 0.76
+                if fill >= 0.76 and solidity >= 0.88 and aspect >= 0.80 and circ >= 0.50:
+                    return True
+
+    return False

@@ -24,6 +24,10 @@ models/checkpoints/*.pt
 models/checkpoints/*.keras
 models/checkpoints/*.h5
 models/checkpoints/*.onnx
+models/best.pt
+models/latest.pt
+models/synthetic_model.pt
+wafer_dataset_10k.npz
 
 # ── Logs & TensorBoard ───────────────────────────────────────────────
 logs/
@@ -36,6 +40,15 @@ data/processed/
 data/external/
 dataset/images/
 dataset/labels/
+dataset/train/
+dataset/val/
+dataset/test/
+dataset/wm811k/
+*.pkl
+*.zip
+*.npz
+push_error*.txt
+
 
 # ── YOLO pretrained weights ─────────────────────────────────────────
 yolov8*.pt

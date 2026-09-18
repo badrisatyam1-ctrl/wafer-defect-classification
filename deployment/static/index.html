@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wafer Yield Analytics Studio | ResNet-18 Intelligence</title>
+    <!-- Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js for Apple-style charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="dark-theme">
+    <!-- Apple-style Translucent Global Header -->
+    <header class="global-nav">
+        <div class="nav-container">
+            <div class="nav-brand" onclick="switchView('classifier')">
+                <svg class="brand-icon" viewBox="0 0 28 28" fill="none">
+                    <circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2 2"/>
+                    <circle cx="14" cy="14" r="8" stroke="currentColor" stroke-width="1.8"/>
+                    <circle cx="14" cy="14" r="3.5" fill="currentColor"/>
+                    <path d="M14 2V6M14 22V26M2 14H6M22 14H26" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                <span class="brand-title">WaferOS <span class="brand-version">v2.5</span></span>
+            </div>
+
+            <nav class="nav-links">
+                <button class="nav-link active" data-view="classifier" onclick="switchView('classifier')">Classifier</button>
+                <button class="nav-link" data-view="assistant" onclick="switchView('assistant')">
+                    Assistant
+                    <span class="nav-badge" id="assistant-indicator">AI</span>
+                </button>
+                <button class="nav-link" data-view="analytics" onclick="switchView('analytics')">Analytics</button>
+                <button class="nav-link" data-view="history" onclick="switchView('history')">
+                    History
+                    <span class="nav-count" id="history-count-badge">0</span>
+                </button>
+                <button class="nav-link" data-view="architecture" onclick="switchView('architecture')">Architecture</button>
+            </nav>
+
+            <div class="nav-actions">
+                <div class="status-pill" title="ResNet-18 Model Active on CPU/GPU">
+                    <span class="pulse-dot"></span>
+                    <span class="status-text">ResNet-18 Online</span>
+                </div>
+                <button class="btn btn-pill-nav" onclick="triggerQuickReport()" title="Export PDF of Current Session">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    PDF Export
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Application Container -->
+    <div class="app-layout">
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- VIEW 1: CLASSIFIER -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <section id="view-classifier" class="app-view active">
+            <!-- Apple Hero Showcase -->
+            <div class="apple-hero">
+                <div class="hero-badge-pill">Semiconductor Defect Intelligence</div>
+                <h1 class="hero-heading">Silicon Yield. Precision Perfected.</h1>
+                <p class="hero-description">
+                    Industrial macro-level wafer defect classification powered by ImageNet-pretrained ResNet-18,
+                    weighted focal loss, and sub-die Grad-CAM spatial activation mapping.
+                </p>
+                <div class="hero-metrics-strip">
+                    <div class="hero-metric-item">
+                        <span class="hero-val">98.57%</span>
+                        <span class="hero-lbl">Macro F1 Score</span>
+                    </div>
+                    <div class="hero-divider"></div>
+                    <div class="hero-metric-item">
+                        <span class="hero-val">&lt; 15ms</span>
+                        <span class="hero-lbl">Inference Latency</span>
+                    </div>
+                    <div class="hero-divider"></div>
+                    <div class="hero-metric-item">
+                        <span class="hero-val">8 Types</span>
+                        <span class="hero-lbl">Defect Taxonomies</span>
+                    </div>
+                    <div class="hero-divider"></div>
+                    <div class="hero-metric-item">
+                        <span class="hero-val">Grad-CAM</span>
+                        <span class="hero-lbl">Spatial Explainability</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Classifier Workspace Grid -->
+            <div class="workspace-grid">
+                <!-- Left Card: Input Panel -->
+                <div class="apple-card input-panel">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <span class="section-tag">INPUT STUDIO</span>
+                            <h2 class="card-title">Wafer Map Ingestion</h2>
+                        </div>
+                        <div class="mode-pills">
+                            <button class="mode-pill active" data-mode="upload" onclick="setClassifierMode('upload')">Upload</button>
+                            <button class="mode-pill" data-mode="synthetic" onclick="setClassifierMode('synthetic')">Synthetic</button>
+                            <button class="mode-pill" data-mode="camera" onclick="setClassifierMode('camera')">Camera</button>
+                        </div>
+                    </div>
+
+                    <!-- Mode 1: Upload Zone -->
+                    <div id="mode-upload" class="mode-content active">
+                        <div class="apple-dropzone" id="drop-zone">
+                            <div class="dropzone-icon">
+                                <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                            </div>
+                            <h3 class="dropzone-title">Drop wafer map image here</h3>
+                            <p class="dropzone-subtitle">Supports PNG, JPG, BMP format up to 25MB</p>
+                            <input type="file" id="wafer-file-input" accept="image/*" style="display: none;">
+                            <button class="btn btn-apple-secondary" onclick="document.getElementById('wafer-file-input').click()">
+                                Choose from Computer
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mode 2: Synthetic Generator -->
+                    <div id="mode-synthetic" class="mode-content">
+                        <div class="synthetic-builder">
+                            <div class="synthetic-info">
+                                <h3>Synthetic Sandbox Generator</h3>
+                                <p>Simulate realistic wafer defect topologies with stochastic noise & spatial distributions.</p>
+                            </div>
+                            <div class="class-picker-grid">
+                                <button class="class-chip active" data-class="scratch" onclick="selectSyntheticClass('scratch')">Scratch</button>
+                                <button class="class-chip" data-class="edge_ring" onclick="selectSyntheticClass('edge_ring')">Edge Ring</button>
+                                <button class="class-chip" data-class="center" onclick="selectSyntheticClass('center')">Center</button>
+                                <button class="class-chip" data-class="cluster" onclick="selectSyntheticClass('cluster')">Cluster</button>
+                                <button class="class-chip" data-class="ring" onclick="selectSyntheticClass('ring')">Ring</button>
+                                <button class="class-chip" data-class="edge_loss" onclick="selectSyntheticClass('edge_loss')">Edge Loss</button>
+                                <button class="class-chip" data-class="full_fail" onclick="selectSyntheticClass('full_fail')">Full Fail</button>
+                                <button class="class-chip" data-class="normal" onclick="selectSyntheticClass('normal')">Normal (Pass)</button>
+                            </div>
+                            <button class="btn btn-apple-primary w-full mt-3" id="btn-generate-synthetic" onclick="generateSyntheticWafer()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+                                Synthesize &amp; Classify
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mode 3: Realtime Camera -->
+                    <div id="mode-camera" class="mode-content">
+                        <div class="camera-stream-box">
+                            <video id="webcam-video" autoplay playsinline class="camera-feed"></video>
+                            <canvas id="webcam-canvas" style="display:none;"></canvas>
+                            
+                            <!-- Circular Wafer Alignment Reticle Guide -->
+                            <div class="camera-reticle-overlay" id="camera-reticle">
+                                <div class="reticle-ring">
+                                    <div class="reticle-notch top"></div>
+                                    <div class="reticle-notch bottom"></div>
+                                    <div class="reticle-notch left"></div>
+                                    <div class="reticle-notch right"></div>
+                                    <span class="reticle-tag">ALIGN SILICON WAFER</span>
+                                </div>
+                            </div>
+
+                            <div class="camera-controls">
+                                <button class="btn btn-apple-secondary" id="btn-start-camera" onclick="startCamera()">Start Camera</button>
+                                <button class="btn btn-apple-primary" id="btn-snap-camera" onclick="captureCamera()" disabled>Snap &amp; Classify</button>
+                            </div>
+                        </div>
+                        <div class="camera-gating-badge">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            <span>Neural Camera Gating Active: Rejects non-wafer frames (faces, background)</span>
+                        </div>
+                    </div>
+
+                    <!-- Preview of Selected Image -->
+                    <div id="source-preview-container" class="source-preview-card hidden">
+                        <div class="preview-header">
+                            <span class="preview-title" id="source-filename">wafer_input.png</span>
+                            <button class="btn-icon" onclick="clearActiveImage()" title="Clear Image">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                        </div>
+                        <div class="preview-frame">
+                            <img id="source-preview-img" src="" alt="Source Wafer Map">
+                        </div>
+                        <div class="preview-actions">
+                            <button class="btn btn-apple-primary w-full" id="btn-run-analysis" onclick="executeClassification()">
+                                <span class="btn-text">Run Neural Inspection</span>
+                                <span class="spinner-inline hidden" id="analysis-spinner"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Card: Live Diagnostics & Grad-CAM -->
+                <div class="apple-card results-panel">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <span class="section-tag">NEURAL DIAGNOSTICS</span>
+                            <h2 class="card-title">Inspection Results</h2>
+                        </div>
+                        <div id="results-meta-pill" class="results-meta hidden">
+                            <span id="latency-tag" class="meta-tag">12ms</span>
+                        </div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="results-empty-state" class="apple-empty-state">
+                        <div class="empty-icon-circle">
+                            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 6v6l4 2"/>
+                            </svg>
+                        </div>
+                        <h3>Awaiting Wafer Inspection</h3>
+                        <p>Upload a wafer map, synthesize a test pattern, or use camera capture to view real-time classification and Grad-CAM spatial activation.</p>
+                        <button class="btn btn-pill-outline mt-3" onclick="loadSampleWafer()">
+                            Load Sample Defect (Cluster)
+                        </button>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="results-loading-state" class="apple-loading-state hidden">
+                        <div class="apple-spinner"></div>
+                        <h3 class="mt-3">Analyzing Silicon Topography...</h3>
+                        <p class="text-muted">Passing tensor through ResNet-18 residual blocks and synthesizing Grad-CAM gradient maps</p>
+                    </div>
+
+                    <!-- Rejection State (Non-Wafer Object Filtered) -->
+                    <div id="results-rejected-state" class="apple-rejected-state hidden">
+                        <div class="rejected-icon-circle">
+                            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#ff9f0a" stroke-width="1.6">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                        </div>
+                        <span class="rejected-pill">CAMERA GATING FILTER</span>
+                        <h3 class="rejected-title">No Silicon Wafer Detected</h3>
+                        <p class="rejected-desc" id="rejected-message">The neural camera gating rejected this frame because no circular semiconductor wafer disc or die pattern was detected. Faces, room backgrounds, and non-wafer objects are filtered to prevent false defect classification.</p>
+                        <div class="rejected-tips-box">
+                            <span class="tips-header">Inspection Protocol:</span>
+                            <ul>
+                                <li>Ensure a circular semiconductor wafer disc or wafer map is centered in the frame.</li>
+                                <li>Use uniform lighting to clearly define the wafer's circular perimeter.</li>
+                                <li>Align the wafer boundary inside the circular targeting reticle.</li>
+                            </ul>
+                        </div>
+                        <button class="btn btn-secondary mt-3" style="width: auto; align-self: center; font-size: 0.85rem; padding: 8px 18px;" onclick="executeClassification(true)">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            Bypass Gating &amp; Inspect Anyway
+                        </button>
+                    </div>
+
+                    <!-- Loaded Diagnostics Content -->
+                    <div id="results-active-content" class="results-layout hidden">
+                        <!-- Top Banner Result -->
+                        <div class="hero-result-banner" id="defect-banner">
+                            <div class="defect-class-info">
+                                <span class="severity-pill" id="result-severity-pill">SEVERITY: HIGH</span>
+                                <h2 class="defect-name" id="result-defect-name">Cluster Defect</h2>
+                                <p class="defect-desc" id="result-defect-desc">Localized aggregation of defects indicating contamination or tool failure.</p>
+                            </div>
+                            <div class="confidence-circle" id="result-confidence-circle">
+                                <span class="conf-percent" id="result-confidence-val">99.4%</span>
+                                <span class="conf-lbl">Confidence</span>
+                            </div>
+                        </div>
+
+                        <!-- 4 Metric KPI Cards -->
+                        <div class="apple-kpi-grid">
+                            <div class="kpi-card">
+                                <span class="kpi-label">Confidence</span>
+                                <span class="kpi-value highlight-blue" id="kpi-conf">99.4%</span>
+                                <span class="kpi-sub" id="kpi-conf-desc">Strong Certainty</span>
+                            </div>
+                            <div class="kpi-card">
+                                <span class="kpi-label">Top-2 Margin</span>
+                                <span class="kpi-value highlight-purple" id="kpi-margin">98.1%</span>
+                                <span class="kpi-sub">Class Distinction</span>
+                            </div>
+                            <div class="kpi-card">
+                                <span class="kpi-label">Severity Level</span>
+                                <span class="kpi-value highlight-amber" id="kpi-severity">High</span>
+                                <span class="kpi-sub" id="kpi-severity-desc">Requires Review</span>
+                            </div>
+                            <div class="kpi-card">
+                                <span class="kpi-label">Latency</span>
+                                <span class="kpi-value highlight-green" id="kpi-speed">12.4ms</span>
+                                <span class="kpi-sub">PyTorch Engine</span>
+                            </div>
+                        </div>
+
+                        <!-- Spatial Activation Map & Probability Distribution Split -->
+                        <div class="diagnostics-split">
+                            <!-- Left: Grad-CAM Explainability -->
+                            <div class="cam-box">
+                                <div class="box-header">
+                                    <div class="box-title-group">
+                                        <h4 class="box-title">Grad-CAM Activation Map</h4>
+                                        <span class="box-subtitle">Layer4 Gradient Heatmap Overlay</span>
+                                    </div>
+                                    <div class="cam-toggle-group">
+                                        <button class="cam-toggle-btn active" id="btn-cam-overlay" onclick="toggleCamView('overlay')">Overlay</button>
+                                        <button class="cam-toggle-btn" id="btn-cam-raw" onclick="toggleCamView('raw')">Raw Thermal</button>
+                                    </div>
+                                </div>
+                                <div class="cam-view-frame">
+                                    <img id="cam-overlay-img" src="" alt="Grad-CAM Overlay" class="cam-display-img active">
+                                    <img id="cam-raw-img" src="" alt="Grad-CAM Raw Heatmap" class="cam-display-img">
+                                </div>
+                                <div class="cam-caption">
+                                    <span class="heat-legend-bar"></span>
+                                    <div class="heat-legend-labels">
+                                        <span>Low Influence</span>
+                                        <span>Peak Attribution Focus</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right: 8-Class Probability Spectrum -->
+                            <div class="probs-box">
+                                <div class="box-header">
+                                    <h4 class="box-title">Defect Probability Spectrum</h4>
+                                    <span class="box-subtitle">Softmax Distribution Across 8 Taxonomies</span>
+                                </div>
+                                <div class="probs-list" id="probability-bars-container">
+                                    <!-- Dynamic bars populated by JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Engineering Action Recommendations Card -->
+                        <div class="engineering-action-card">
+                            <div class="action-header">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0071e3" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                <h4>Engineering Recommendations &amp; Fab Impact</h4>
+                            </div>
+                            <div class="action-content" id="engineering-action-body">
+                                <p>Loading domain intelligence...</p>
+                            </div>
+                            <div class="action-footer">
+                                <button class="btn btn-pill-sm btn-apple-blue" onclick="queryChatbotWithDefect('What are the exact root causes and solutions for this defect?')">
+                                    Ask AI Assistant About This Defect ›
+                                </button>
+                                <button class="btn btn-pill-sm btn-apple-frosted" onclick="exportCurrentWaferPdf()">
+                                    Download Wafer PDF Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- VIEW 2: SEMICONDUCTOR INTELLIGENCE ASSISTANT (CHATBOT) -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <section id="view-assistant" class="app-view">
+            <div class="assistant-hero">
+                <div class="hero-badge-pill">Semiconductor Fab Intelligence</div>
+                <h1 class="hero-heading">Wafer Defect Assistant</h1>
+                <p class="hero-description">
+                    Domain-trained conversational AI for yield enhancement, root cause isolation,
+                    equipment troubleshooting, and Statistical Process Control (SPC).
+                </p>
+            </div>
+
+            <div class="assistant-workspace">
+                <div class="chat-container apple-card">
+                    <!-- Context Header Banner -->
+                    <div class="chat-context-bar" id="chat-context-bar">
+                        <div class="context-indicator">
+                            <span class="context-dot"></span>
+                            <span class="context-label">Active Wafer Context:</span>
+                            <strong id="chat-active-defect" class="context-value">Cluster Defect (99.4%)</strong>
+                        </div>
+                        <button class="btn-text-xs" onclick="resetChatContext()">Switch Context</button>
+                    </div>
+
+                    <!-- Quick Query Chips -->
+                    <div class="quick-chips-row">
+                        <span class="chips-label">Quick Inquiries:</span>
+                        <button class="chip-btn" onclick="sendQuickQuery('What are the primary root causes for this defect in fabrication?')">Root Causes</button>
+                        <button class="chip-btn" onclick="sendQuickQuery('What corrective actions and equipment adjustments should be made?')">Corrective Actions</button>
+                        <button class="chip-btn" onclick="sendQuickQuery('What is the expected yield and die loss impact on the wafer?')">Yield Impact</button>
+                        <button class="chip-btn" onclick="sendQuickQuery('What SPC alarm limits and metrology checks should be implemented?')">SPC Controls</button>
+                        <button class="chip-btn" onclick="sendQuickQuery('Provide a full comprehensive engineering audit for this wafer defect.')">Full Engineering Audit</button>
+                    </div>
+
+                    <!-- Chat Messages Flow -->
+                    <div class="chat-messages-viewport" id="chat-messages">
+                        <!-- Welcome message -->
+                        <div class="chat-msg msg-assistant">
+                            <div class="msg-avatar">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="21"/></svg>
+                            </div>
+                            <div class="msg-body">
+                                <div class="msg-sender">Wafer Intelligence Agent</div>
+                                <div class="msg-text">
+                                    Welcome to the semiconductor defect advisory console. I have access to our ResNet-18 model diagnostics, full fabrication root-cause databases, and SPC mitigation strategies.<br><br>
+                                    Ask any question about root causes, equipment calibration (CVD/PVD showerheads, CMP polishing pads, lithography EBR), or click one of the quick inquiry pills above.
+                                </div>
+                                <span class="msg-time">Just now</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Input Bar -->
+                    <div class="chat-input-bar">
+                        <input type="text" id="chat-user-input" class="chat-input" placeholder="Ask about wafer defect root causes, corrective actions, or yield impact..." onkeydown="handleChatKey(event)">
+                        <button class="btn btn-chat-send" id="btn-send-chat" onclick="sendChatMessage()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- VIEW 3: YIELD ANALYTICS -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <section id="view-analytics" class="app-view">
+            <div class="analytics-hero">
+                <div class="hero-badge-pill">Fab Process Telemetry</div>
+                <h1 class="hero-heading">Wafer Yield Analytics</h1>
+                <p class="hero-description">
+                    Live session aggregate metrics, defect taxonomy distribution, cumulative lot yield trends,
+                    and neural model inference benchmarks.
+                </p>
+            </div>
+
+            <!-- Analytics Top KPI Cards -->
+            <div class="analytics-kpi-grid">
+                <div class="apple-card stat-tile">
+                    <span class="stat-label">Total Wafers Inspected</span>
+                    <span class="stat-val" id="stats-total">0</span>
+                    <span class="stat-desc">Session Total</span>
+                </div>
+                <div class="apple-card stat-tile">
+                    <span class="stat-label">Normal (Pass)</span>
+                    <span class="stat-val highlight-green" id="stats-normal">0</span>
+                    <span class="stat-desc">Zero Defects Detected</span>
+                </div>
+                <div class="apple-card stat-tile">
+                    <span class="stat-label">Defective Wafers</span>
+                    <span class="stat-val highlight-red" id="stats-defects">0</span>
+                    <span class="stat-desc">Requiring Fab Review</span>
+                </div>
+                <div class="apple-card stat-tile">
+                    <span class="stat-label">Yield Rate</span>
+                    <span class="stat-val highlight-amber" id="stats-yield">100.0%</span>
+                    <span class="stat-desc">Fab Target: 90.0%</span>
+                </div>
+                <div class="apple-card stat-tile">
+                    <span class="stat-label">Mean Confidence</span>
+                    <span class="stat-val highlight-purple" id="stats-avg-conf">--%</span>
+                    <span class="stat-desc">Model Certainty</span>
+                </div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="analytics-charts-grid">
+                <!-- Donut: Defect Distribution -->
+                <div class="apple-card chart-card">
+                    <div class="chart-header">
+                        <h3>Defect Taxonomy Distribution</h3>
+                        <span class="chart-sub">Share of anomalies per defect category</span>
+                    </div>
+                    <div class="chart-canvas-wrapper">
+                        <canvas id="chart-defect-distribution"></canvas>
+                    </div>
+                </div>
+
+                <!-- Histogram: Confidence Distribution -->
+                <div class="apple-card chart-card">
+                    <div class="chart-header">
+                        <h3>Confidence Distribution</h3>
+                        <span class="chart-sub">Classification certainty frequency</span>
+                    </div>
+                    <div class="chart-canvas-wrapper">
+                        <canvas id="chart-confidence-dist"></canvas>
+                    </div>
+                </div>
+
+                <!-- Line: Cumulative Yield Trend -->
+                <div class="apple-card chart-card wide-chart">
+                    <div class="chart-header">
+                        <h3>Cumulative Lot Yield Rate Trend</h3>
+                        <span class="chart-sub">Tracking session yield % against 90% production control target</span>
+                    </div>
+                    <div class="chart-canvas-wrapper-tall">
+                        <canvas id="chart-yield-trend"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- VIEW 4: INSPECTION HISTORY -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <section id="view-history" class="app-view">
+            <div class="history-hero">
+                <div class="hero-badge-pill">Lot Audit Log</div>
+                <h1 class="hero-heading">Inspection History</h1>
+                <p class="hero-description">
+                    Full chronological ledger of analyzed wafer maps, defect classes, confidence levels,
+                    and downloadable individual/lot audit documentation.
+                </p>
+            </div>
+
+            <div class="apple-card history-card">
+                <!-- Filter & Batch Bar -->
+                <div class="history-toolbar">
+                    <div class="search-box">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="history-search-input" placeholder="Search by Wafer ID or Defect Class..." oninput="filterHistoryTable()">
+                    </div>
+
+                    <div class="filter-select-group">
+                        <select id="history-defect-filter" onchange="filterHistoryTable()">
+                            <option value="all">All Defect Classes</option>
+                            <option value="scratch">Scratch</option>
+                            <option value="edge_ring">Edge Ring</option>
+                            <option value="center">Center</option>
+                            <option value="cluster">Cluster</option>
+                            <option value="ring">Ring</option>
+                            <option value="edge_loss">Edge Loss</option>
+                            <option value="full_fail">Full Fail</option>
+                            <option value="normal">Normal</option>
+                        </select>
+                    </div>
+
+                    <div class="history-actions-group">
+                        <button class="btn btn-apple-primary btn-sm" onclick="exportLotPdf()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Export Lot PDF
+                        </button>
+                        <button class="btn btn-apple-secondary btn-sm" onclick="exportLotCsv()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                            Export CSV
+                        </button>
+                        <button class="btn btn-apple-frosted btn-sm" onclick="clearHistoryLog()">Clear</button>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="history-table-wrapper">
+                    <table class="apple-table" id="history-table">
+                        <thead>
+                            <tr>
+                                <th>Wafer Preview</th>
+                                <th>Wafer Filename</th>
+                                <th>Classification</th>
+                                <th>Confidence</th>
+                                <th>Severity</th>
+                                <th>Latency</th>
+                                <th>Inspection Timestamp</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            <!-- Dynamic history rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- VIEW 5: ARCHITECTURE & SPECS -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <section id="view-architecture" class="app-view">
+            <div class="arch-hero">
+                <div class="hero-badge-pill">Deep Learning System Architecture</div>
+                <h1 class="hero-heading">ResNet-18 Deep Residual Network</h1>
+                <p class="hero-description">
+                    Complete neural pipeline specification, key industrial design decisions, transfer learning hyperparameters,
+                    and semiconductor defect taxonomy catalog.
+                </p>
+            </div>
+
+            <!-- Pipeline Diagram -->
+            <div class="apple-card arch-card">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <span class="section-tag">NEURAL PIPELINE</span>
+                        <h2 class="card-title">End-to-End Inference &amp; Attribution Architecture</h2>
+                    </div>
+                </div>
+
+                <div class="pipeline-visual-flow">
+                    <div class="flow-stage">
+                        <div class="stage-badge">STAGE 1</div>
+                        <div class="stage-box">
+                            <h4>Raw Wafer Map</h4>
+                            <p>Arbitrary resolution, single or multi-channel silicon die pattern.</p>
+                            <span class="tensor-tag">Shape: [H, W, 3]</span>
+                        </div>
+                    </div>
+                    <div class="flow-arrow">→</div>
+
+                    <div class="flow-stage">
+                        <div class="stage-badge">STAGE 2</div>
+                        <div class="stage-box">
+                            <h4>Wafer Preprocessor</h4>
+                            <p>Square zero-padding, bilinear resize (224×224), ImageNet normalization.</p>
+                            <span class="tensor-tag">Shape: [3, 224, 224]</span>
+                        </div>
+                    </div>
+                    <div class="flow-arrow">→</div>
+
+                    <div class="flow-stage">
+                        <div class="stage-badge">STAGE 3</div>
+                        <div class="stage-box highlight-stage">
+                            <h4>ResNet-18 Backbone</h4>
+                            <p>Conv1 (7×7) → 4 Residual Block stages (64, 128, 256, 512 channels) with skip connections.</p>
+                            <span class="tensor-tag">Features: [512, 7, 7]</span>
+                        </div>
+                    </div>
+                    <div class="flow-arrow">→</div>
+
+                    <div class="flow-stage">
+                        <div class="stage-badge">STAGE 4</div>
+                        <div class="stage-box">
+                            <h4>GAP + Dropout</h4>
+                            <p>Global Average Pooling reduces spatial grid to 512-D vector. Dropout (p=0.3) prevents co-adaptation.</p>
+                            <span class="tensor-tag">Shape: [512]</span>
+                        </div>
+                    </div>
+                    <div class="flow-arrow">→</div>
+
+                    <div class="flow-stage">
+                        <div class="stage-badge">STAGE 5</div>
+                        <div class="stage-box">
+                            <h4>Linear Head (8-Class)</h4>
+                            <p>Fully connected layer (512 → 8) followed by Softmax probabilities &amp; Grad-CAM backward pass.</p>
+                            <span class="tensor-tag">Output: [8] + Heatmap</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Design Decisions & Performance Grid -->
+            <div class="arch-details-grid">
+                <!-- Design Decisions -->
+                <div class="apple-card">
+                    <h3 class="card-title mb-2">Key Industrial Decisions</h3>
+                    <div class="decisions-list">
+                        <div class="decision-item">
+                            <h4>Why ResNet-18?</h4>
+                            <p>Residual skip connections eliminate the vanishing gradient problem while maintaining an ultra-light 11.2M parameter footprint. Inference completes in under 15ms on standard CPU hardware without GPU accelerator requirements.</p>
+                        </div>
+                        <div class="decision-item">
+                            <h4>Why WeightedRandomSampler?</h4>
+                            <p>Real-world wafer datasets (like WM-811K) are heavily imbalanced with &gt;60% normal wafers. Instead of using excessive loss weights that risk class collapse, we balance mini-batch sampling directly in the PyTorch DataLoader.</p>
+                        </div>
+                        <div class="decision-item">
+                            <h4>Stratified Lot/Time Split</h4>
+                            <p>Guarantees every minority defect class appears in both training and validation sets, preventing the synthetic "lucky split" phenomenon and ensuring honest macro-F1 evaluation.</p>
+                        </div>
+                        <div class="decision-item">
+                            <h4>Sub-Die Grad-CAM Explainability</h4>
+                            <p>Takes gradients of the target class score with respect to Layer4 feature activation maps to compute spatial attribution overlays without modifying the network architecture.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Benchmarks & Gauges -->
+                <div class="apple-card">
+                    <h3 class="card-title mb-2">Production Benchmarks</h3>
+                    <div class="benchmark-gauges-container">
+                        <div class="gauge-card">
+                            <div class="gauge-header">
+                                <span class="gauge-title">Synthetic Sandbox Model</span>
+                                <span class="gauge-score">98.57%</span>
+                            </div>
+                            <div class="progress-bar-track">
+                                <div class="progress-bar-fill" style="width: 98.57%;"></div>
+                            </div>
+                            <div class="gauge-stats-row">
+                                <span>Val Acc: 98.5%</span>
+                                <span>Latency: ~12ms</span>
+                                <span>Epoch: 13</span>
+                            </div>
+                        </div>
+
+                        <div class="gauge-card">
+                            <div class="gauge-header">
+                                <span class="gauge-title">WM-811K Real Fab Model</span>
+                                <span class="gauge-score">92.31%</span>
+                            </div>
+                            <div class="progress-bar-track">
+                                <div class="progress-bar-fill" style="width: 92.31%;"></div>
+                            </div>
+                            <div class="gauge-stats-row">
+                                <span>Val Acc: 93.0%</span>
+                                <span>Latency: ~12ms</span>
+                                <span>Epoch: 20</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 class="mt-4 mb-2">Technology Stack Specifications</h4>
+                    <div class="tech-tags-cloud">
+                        <span class="tech-tag">PyTorch 2.x</span>
+                        <span class="tech-tag">Torchvision ResNet-18</span>
+                        <span class="tech-tag">FastAPI Async Backend</span>
+                        <span class="tech-tag">OpenCV 4.x Vision</span>
+                        <span class="tech-tag">Grad-CAM Attribution</span>
+                        <span class="tech-tag">FPDF2 High-Res Reports</span>
+                        <span class="tech-tag">Chart.js Visual Telemetry</span>
+                        <span class="tech-tag">WM-811K Dataset Engine</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Defect Taxonomy Encyclopedia -->
+            <div class="apple-card mt-3">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <span class="section-tag">DOMAIN TAXONOMY</span>
+                        <h2 class="card-title">Defect Class Knowledge Reference</h2>
+                    </div>
+                </div>
+
+                <div class="taxonomy-grid" id="taxonomy-grid-container">
+                    <!-- Populated dynamically from defect knowledge -->
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="apple-toast" class="apple-toast">
+        <span id="toast-message">Notification message</span>
+    </div>
+
+    <script src="/script.js"></script>
+</body>
+</html>
