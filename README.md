@@ -1,4 +1,4 @@
-# 🧬 Wafer Yield Analytics Studio — Semiconductor Defect Intelligence
+# Wafer Yield Analytics Studio — Semiconductor Defect Intelligence
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white" />
@@ -19,7 +19,7 @@
 
 ---
 
-## 📌 Technical Highlights & Key Metrics
+##  Technical Highlights & Key Metrics
 
 | Feature | Production Detail |
 |---|---|
@@ -33,7 +33,7 @@
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 Input Image (any resolution)
@@ -71,7 +71,7 @@ Wafers from the same production lot share identical process conditions. Random s
 
 ---
 
-## 📊 Defect Classes
+##  Defect Classes
 
 | # | Class | Description |
 |---|---|---|
@@ -86,9 +86,9 @@ Wafers from the same production lot share identical process conditions. Random s
 
 ---
 
-## 📈 Model Performance
+##  Model Performance
 
-### 🔬 Synthetic Sandbox Model (`models/synthetic_model.pt`)
+###  Synthetic Sandbox Model (`models/synthetic_model.pt`)
 >
 > Trained on 10,000 synthetic wafer maps generated with controlled geometric patterns.
 
@@ -99,7 +99,7 @@ Wafers from the same production lot share identical process conditions. Random s
 | **Val Accuracy** | ~98.5% |
 | Inference Speed | ~12ms/image (CPU) |
 
-### 🏭 Real Production Model (`models/best.pt`)
+###  Real Production Model (`models/best.pt`)
 >
 > Fine-tuned on real WM-811K fab-captured wafer maps with lot-based validation split.
 
@@ -114,7 +114,7 @@ Wafers from the same production lot share identical process conditions. Random s
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### 1. Clone & Install
 
@@ -154,14 +154,14 @@ python tools/generate_synthetic_dataset.py
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 wafer-defect-classification/
 ├── models/
 │   ├── resnet18_classifier.py   # ResNet18 + FocalLoss + GradCAM + WaferPreprocessor
-│   ├── best.pt                  # 🏭 Real production checkpoint (WM-811K, F1=0.868)
-│   └── synthetic_model.pt       # 🔬 Synthetic sandbox checkpoint (F1=0.986)
+│   ├── best.pt                  # Real production checkpoint (WM-811K, F1=0.868)
+│   └── synthetic_model.pt       # Synthetic sandbox checkpoint (F1=0.986)
 │
 ├── training/
 │   ├── train_hackathon.py       # Fast ImageFolder-based training (used for best.pt)
@@ -169,7 +169,7 @@ wafer-defect-classification/
 │   └── split_and_train.py       # Dataset splitting utilities
 │
 ├── deployment/
-│   ├── streamlit_app_v2.py      # 🖥️ Interactive Streamlit dashboard (dual-mode)
+│   ├── streamlit_app_v2.py      # Interactive Streamlit dashboard (dual-mode)
 │   ├── inference.py             # WaferInferenceEngine — auto checkpoint routing
 │   ├── chatbot.py               # AI Wafer Assistant (OpenAI-powered)
 │   └── wafer_detector.py        # YOLOv8-based wafer presence gating
@@ -192,7 +192,7 @@ wafer-defect-classification/
 
 ---
 
-## 🧠 Key Technical Decisions
+##  Key Technical Decisions
 
 ### 1. Dual-Model Inference Routing
 
@@ -227,20 +227,20 @@ overlay = GradCAM.overlay_heatmap(img, heatmap)
 
 ---
 
-## 🖥️ Streamlit Dashboard Features
+##  Streamlit Dashboard Features
 
-- 🔄 **Dual-mode switching** — toggle between Real Production and Synthetic Sandbox
-- 📤 **Upload** your own wafer image for instant classification
-- 🎲 **Synthetic Generation** — generate controlled defect patterns on-the-fly
-- 📷 **Real-time Camera** input with YOLOv8-based wafer detection gating
-- 🔥 **Grad-CAM Overlay** — see exactly what the model focused on
-- 📊 **Class probability bar chart** — full probability distribution
-- 🤖 **AI Wafer Assistant** — ask about root causes, fixes, and yield impact
-- 🚨 **Full-fail detection override** — catastrophic failures are flagged immediately
+-  **Dual-mode switching** — toggle between Real Production and Synthetic Sandbox
+-  **Upload** your own wafer image for instant classification
+-  **Synthetic Generation** — generate controlled defect patterns on-the-fly
+-  **Real-time Camera** input with YOLOv8-based wafer detection gating
+-  **Grad-CAM Overlay** — see exactly what the model focused on
+-  **Class probability bar chart** — full probability distribution
+-  **AI Wafer Assistant** — ask about root causes, fixes, and yield impact
+-  **Full-fail detection override** — catastrophic failures are flagged immediately
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 | Component | Technology |
 |---|---|
@@ -257,13 +257,13 @@ overlay = GradCAM.overlay_heatmap(img, heatmap)
 
 ---
 
-## 📜 License
+##  License
 
 MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-## 👤 Author
+##  Author
 
 **Badri Satyam**  
 [GitHub](https://github.com/badrisatyam1-ctrl)
