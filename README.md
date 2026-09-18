@@ -4,34 +4,28 @@
   <img src="https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white" />
   <img src="https://img.shields.io/badge/Macro--F1-93.51%25-success?logo=target" />
-  <img src="https://img.shields.io/badge/XAI-Grad--CAM%2B%2B-orange" />
+  <img src="https://img.shields.io/badge/Inference-~12ms-brightgreen?logo=speedtest" />
+  <img src="https://img.shields.io/badge/XAI-Multi--Scale%20Grad--CAM%2B%2B-orange" />
   <img src="https://img.shields.io/badge/FastAPI-Production-009688?logo=fastapi&logoColor=white" />
+  <img src="https://img.shields.io/badge/UI-Glassmorphic%20Studio-6C5CE7" />
 </p>
 
 <p align="center">
-  <b>Production-grade semiconductor wafer defect classification and yield intelligence system.</b><br/>
-  Featuring ResNet-18 Backbone (93.51% Macro-F1), Multi-Scale Grad-CAM++ Explainability, and Neural Camera Gating.
+  <b>Enterprise-grade semiconductor wafer defect classification, explainability, and yield analytics platform.</b><br/>
+  Powered by ResNet-18 Backbone (93.51% Macro-F1), Multi-Scale Grad-CAM++ Attribution, Neural Circularity Gating, and Fab Analytics Studio.
 </p>
 
 > [!IMPORTANT]
 > **Proprietary Notice & Technical Showcase Repository**:
-> This repository is published as a technical architecture showcase and ML portfolio. The trained production model weights (`resnet18_best.pt`) and proprietary semiconductor fabrication datasets are private intellectual property and are intentionally withheld from public distribution. The project cannot be executed locally without licensed checkpoint access. For evaluation access or live demonstrations, please contact the author.
+> This repository is published as an architectural showcase and machine learning engineering portfolio. The trained production checkpoint weights (`resnet18_best.pt`) and proprietary semiconductor fab datasets are confidential intellectual property and are intentionally withheld from public distribution. The project includes an automated gate preventing execution without licensed weights. For corporate evaluations, partnerships, or live demonstrations, please contact the author.
 
 ---
 
 ##  Technical Highlights & Key Metrics
 
-| Feature | Production Detail |
-|---|---|
-| **Architecture** | Custom ResNet-18 Deep Convolutional Backbone |
-| **Accuracy / Macro-F1** | **93.51% Macro-F1** across 8 defect taxonomies |
-| **Inference Latency** | ~12ms per wafer map (CPU/CUDA accelerated) |
-| **Explainable AI (XAI)** | **Multi-Scale Grad-CAM++** (Layer3 + Layer4 fusion with wafer disc masking) |
-| **Input Protection** | **Convex Hull Circularity Camera Gating** (filters faces, hands, non-wafer objects) |
-| **Web Studio** | Glassmorphic Web Dashboard (FastAPI + Vanilla CSS/JS) |
-| **Taxonomies Covered** | `normal`, `center`, `edge_ring`, `edge_loss`, `scratch`, `ring`, `cluster`, `full_fail` |
+Semiconductor microchip manufacturing demands near-zero defect escape rates. Wafer map macro-defect signatures (rings, scratches, edge losses, localized clusters) pinpoint specific chamber degradation, polishing malfunctions, or thermal anomalies. 
 
----
+WaferOS delivers an end-to-end automated defect classification and yield intelligence platform achieving **93.51% validation Macro-F1** across 8 semiconductor defect taxonomies with ultra-low latency inference (~12ms).
 
 ##  Architecture
 
@@ -75,14 +69,13 @@ Wafers from the same production lot share identical process conditions. Random s
 
 | # | Class | Description |
 |---|---|---|
-| 0 | `normal` | No defect — good wafer |
-| 1 | `center` | Yield loss at the wafer center |
-| 2 | `edge_ring` | Ring of failed dies along the edge |
-| 3 | `edge_loss` | Partial arc failure at one edge |
-| 4 | `scratch` | Bright scratch line across the wafer |
-| 5 | `ring` | Concentric ring at mid-radius |
-| 6 | `cluster` | Localized cluster of defective dies |
-| 7 | `full_fail` | Entire wafer surface failed |
+| **Validation Macro-F1** | **93.51%** | Balanced across all rare & common defect topologies |
+| **Validation Accuracy** | **93.51%** | Evaluated on unseen lots under fab-level process variance |
+| **Inference Latency** | **~12ms / wafer** | Real-time optical inspection (AOI) line compatible |
+| **XAI Resolution** | **$14 \times 14 \to 224 \times 224$** | 4x spatial resolution via Layer3 + Layer4 Grad-CAM++ fusion |
+| **Camera Gating** | **Convex Hull Circularity** | Blocks faces, hands, and room clutter from false-triggering classifier |
+| **Serving Architecture** | **FastAPI Asynchronous Daemon** | REST API endpoints for single/batch inference, PDF export, & LLM chat |
+| **User Interface** | **WaferOS v2.5 Glassmorphic Studio** | Modern dark-mode fab cockpit with real-time video, uploads, & analytics |
 
 ---
 
@@ -123,33 +116,63 @@ git clone https://github.com/badrisatyam1-ctrl/wafer-defect-classification.git
 cd wafer-defect-classification
 pip install -r requirements.txt
 ```
-
-### 2. Launch the Streamlit App
-
-```bash
-# Option A: Double-click on Windows
-start_app.bat
-
-# Option B: Manual
-streamlit run deployment/streamlit_app_v2.py --server.address=127.0.0.1 --server.port=8501
-```
-
-Open browser at: **<http://127.0.0.1:8501>**
-
-### 3. Train the Models
-
-```bash
-# Hackathon-style fast training (ImageFolder dataset)
-python training/train_hackathon.py
-
-# Full production training with lot-based split
-python training/train_resnet.py --dataset-npz wafer_dataset_10k.npz --split-mode lot
-```
-
-### 4. Generate Synthetic Dataset
-
-```bash
-python tools/generate_synthetic_dataset.py
+                               ┌──────────────────────────────────────────────┐
+                               │       Wafer Ingestion Sources                │
+                               │  - High-Res Optical Inspection (AOI) Upload │
+                               │  - Real-Time Camera Stream / Reticle        │
+                               │  - Procedural Defect Pattern Synthesizer     │
+                               └──────────────────────┬───────────────────────┘
+                                                      │
+                                                      ▼
+                               ┌──────────────────────────────────────────────┐
+                               │   Wafer Presence & Gating Engine             │
+                               │   (deployment/wafer_detector.py)             │
+                               │   - YCrCb Human Skin Tone Rejection          │
+                               │   - Morphological Decoupling (cv2.MORPH_OPEN)│
+                               │   - Convex Hull Circularity & MinCircle Fill │
+                               │   - Rejection: NO_WAFER_DETECTED             │
+                               └──────────────────────┬───────────────────────┘
+                                                      │ (Passed)
+                                                      ▼
+                               ┌──────────────────────────────────────────────┐
+                               │   Wafer Preprocessing Pipeline               │
+                               │   - Aspect-Ratio Preserving Square Pad       │
+                               │   - 224x224 Bilinear Interpolation           │
+                               │   - Channel Normalization (μ=0.5, σ=0.5)     │
+                               └──────────────────────┬───────────────────────┘
+                                                      │
+                                                      ▼
+                               ┌──────────────────────────────────────────────┐
+                               │   ResNet-18 Deep Convolutional Backbone      │
+                               │   - Conv1 (7x7, stride 2) + MaxPool          │
+                               │   - Layer1 (64ch, 56x56)                     │
+                               │   - Layer2 (128ch, 28x28)                    │
+                               │   - Layer3 (256ch, 14x14) ──┐ (Spatial Cam)  │
+                               │   - Layer4 (512ch, 7x7)   ──┼ (Semantic Cam) │
+                               │   - Global Average Pooling  │                │
+                               │   - Dropout (p=0.3) + FC(512 → 8)            │
+                               └──────────────────────┬──────┴────────────────┘
+                                                      │
+                       ┌──────────────────────────────┴──────────────────────────────┐
+                       │                                                             │
+                       ▼                                                             ▼
+     ┌────────────────────────────────────┐                        ┌────────────────────────────────────┐
+     │      Classification Output         │                        │     Multi-Scale Grad-CAM++         │
+     │  - Softmax Probability Spectrum    │                        │  - 2nd & 3rd Order Gradient Math   │
+     │  - Top-2 Margin & Severity Score   │                        │  - Layer3 (0.60) + Layer4 (0.40)   │
+     │  - Inference Latency Benchmark     │                        │  - Disc Masking (0 Background Bleed│
+     └─────────────────┬──────────────────┘                        └─────────────────┬──────────────────┘
+                       │                                                             │
+                       └──────────────────────────────┬──────────────────────────────┘
+                                                      │
+                                                      ▼
+                               ┌──────────────────────────────────────────────┐
+                               │   WaferOS Yield Analytics Web Studio         │
+                               │   - Live Diagnostic Heatmap & Raw Thermal    │
+                               │   - Defect Knowledge Base & Root Causes      │
+                               │   - Semiconductor AI Assistant (Gemini LLM)  │
+                               │   - Lot PDF Audit & CSV Analytics Exporter   │
+                               └──────────────────────────────────────────────┘
 ```
 
 ---
@@ -158,6 +181,16 @@ python tools/generate_synthetic_dataset.py
 
 ```
 wafer-defect-classification/
+├── deployment/
+│   ├── server.py               # FastAPI backend with model lazy-loader & REST routes
+│   ├── wafer_detector.py       # Convex hull circularity & morphological wafer gating
+│   ├── chatbot.py              # Semiconductor LLM fab assistant
+│   ├── report_generator.py     # PDF lot audit generator
+│   └── static/                 # WaferOS Glassmorphic Web Interface
+│       ├── index.html          # Web Studio dashboard template
+│       ├── styles.css          # Glassmorphic CSS tokens, typography, dark mode
+│       └── script.js           # Interactive controller, Chart.js, API clients
+│
 ├── models/
 │   ├── resnet18_classifier.py   # ResNet18 + FocalLoss + GradCAM + WaferPreprocessor
 │   ├── best.pt                  # Real production checkpoint (WM-811K, F1=0.868)
@@ -175,19 +208,12 @@ wafer-defect-classification/
 │   └── wafer_detector.py        # YOLOv8-based wafer presence gating
 │
 ├── utils/
-│   └── synthetic_generator.py   # Procedural 8-class wafer map generator
+│   ├── synthetic_generator.py  # Procedural defect pattern generator
+│   └── wafer_dataset.py        # PyTorch dataset & augmentation loader
 │
-├── tools/
-│   ├── generate_synthetic_dataset.py  # Build full synthetic training set
-│   ├── extract_wm811k.py              # Parse WM-811K .pkl into ImageFolder format
-│   └── enforce_dataset_quality.py     # Audit dataset integrity
-│
-├── evaluation/
-│   └── evaluate_model.py        # Confusion matrix, per-class metrics
-│
-├── dataset/                     # ImageFolder training data (train/val split)
-├── requirements.txt
-└── start_app.bat                # One-click Windows launcher
+├── requirements.txt            # Python environment specifications
+├── start_app.bat               # Windows one-click local server launcher
+└── walkthrough.md              # Technical validation & audit log
 ```
 
 ---
