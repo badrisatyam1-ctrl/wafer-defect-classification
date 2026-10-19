@@ -33,7 +33,6 @@ let yieldTrendChart = null;
 document.addEventListener('DOMContentLoaded', () => {
     initDropzone();
     loadSystemInfo();
-    loadSampleWafer(); // Load initial sample so the interface is immediately engaging
 });
 
 // ── View Switching ───────────────────────────────────────────────────
